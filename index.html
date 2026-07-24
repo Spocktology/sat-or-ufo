@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbital Illumination Screen — field tool</title>
+<meta name="description" content="Field tool for UAP investigators. Enter time, place, and the reported position of a light in the sky; returns whether sunlight could have reached an object in Earth orbit along that line of sight, and what would have been able to see it.">
+<meta name="theme-color" content="#080B16">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Orbital Illumination Screen">
+<meta property="og:description" content="Earth-shadow geometry for satellite and debris flare screening. Screens one hypothesis; does not identify objects.">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#080B16;
+  --panel:#111629;
+  --panel-2:#161C33;
+  --edge:#28304E;
+  --edge-soft:#1D2440;
+  --ink:#DFE5F2;
+  --dim:#7E89AB;
+  --faint:#5A6484;
+  --lit:#E8A33D;         /* sunlit */
+  --lit-soft:#4A3418;
+  --dark:#5470C4;        /* in shadow */
+  --dark-soft:#1A2144;
+  --caution:#C77B5A;
+  --ok:#5FA98C;
+  --mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --sans:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--void);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 20px 72px}
+
+/* ---------- masthead ---------- */
+header.mast{
+  border-bottom:1px solid var(--edge);
+  padding-bottom:18px;margin-bottom:26px;
+  display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between;
+}
+.mast h1{
+  font-family:var(--mono);font-weight:600;
+  font-size:clamp(21px,3.4vw,32px);
+  letter-spacing:-0.02em;margin:0;line-height:1.1;
+}
+.mast h1 .amber{color:var(--lit)}
+.mast .sub{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:0.14em;
+  text-transform:uppercase;color:var(--faint);margin-top:8px;
+}
+.mast .ver{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;letter-spacing:.08em}
+
+/* ---------- layout ---------- */
+.grid{display:grid;grid-template-columns:352px 1fr;gap:24px;align-items:start}
+@media (max-width:940px){.grid{grid-template-columns:1fr}}
+
+.panel{
+  background:var(--panel);
+  border:1px solid var(--edge-soft);
+  border-radius:4px;
+  padding:18px;
+}
+.panel + .panel{margin-top:18px}
+.eyebrow{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin:0 0 14px;display:flex;align-items:center;gap:10px;
+}
+.eyebrow::after{content:'';flex:1;height:1px;background:var(--edge-soft)}
+
+/* ---------- form ---------- */
+.field{margin-bottom:13px}
+.field label{
+  display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:5px;
+}
+.field .hint{font-size:11.5px;color:var(--faint);margin-top:4px;line-height:1.4}
+input[type=text],input[type=number],input[type=date],input[type=time],select{
+  width:100%;background:var(--void);color:var(--ink);
+  border:1px solid var(--edge);border-radius:3px;
+  font-family:var(--mono);font-size:14px;padding:8px 10px;
+}
+input:focus,select:focus,button:focus-visible{
+  outline:2px solid var(--lit);outline-offset:1px;border-color:var(--lit);
+}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+.checks{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.chk{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:var(--ink);cursor:pointer}
+.chk input{margin:3px 0 0;accent-color:var(--caution);flex:none}
+
+button{
+  font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  border-radius:3px;cursor:pointer;padding:10px 14px;border:1px solid var(--edge);
+  background:var(--panel-2);color:var(--ink);transition:background .15s,border-color .15s;
+}
+button:hover{background:var(--edge-soft);border-color:var(--dim)}
+button.primary{background:var(--lit);color:#231703;border-color:var(--lit);font-weight:600}
+button.primary:hover{background:#F2B355;border-color:#F2B355}
+.btnrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px}
+
+/* ---------- verdict ---------- */
+.verdict{
+  border:1px solid var(--edge);border-radius:4px;padding:20px 22px;margin-bottom:18px;
+  background:var(--panel);position:relative;overflow:hidden;
+}
+.verdict::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--dim)}
+.verdict.excluded::before{background:var(--dark)}
+.verdict.unlikely::before{background:var(--caution)}
+.verdict.possible::before{background:var(--lit)}
+.verdict.na::before{background:var(--faint)}
+.verdict .tag{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:8px;
+}
+.verdict h2{
+  font-family:var(--mono);font-weight:600;font-size:clamp(17px,2.4vw,22px);
+  margin:0 0 10px;letter-spacing:-0.01em;line-height:1.25;
+}
+.verdict.excluded h2{color:var(--dark)}
+.verdict.unlikely h2{color:var(--caution)}
+.verdict.possible h2{color:var(--lit)}
+.verdict p{margin:0;font-size:14px;color:var(--dim);max-width:66ch}
+
+/* ---------- readouts ---------- */
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;background:var(--edge-soft);border:1px solid var(--edge-soft);border-radius:4px;overflow:hidden;margin-bottom:18px}
+.cell{background:var(--panel);padding:13px 14px}
+.cell .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.cell .v{font-family:var(--mono);font-size:19px;font-weight:500;letter-spacing:-0.01em;line-height:1.15}
+.cell .u{font-size:11.5px;color:var(--dim);font-weight:400}
+
+/* ---------- diagrams ---------- */
+.figure{margin-bottom:18px}
+.figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:12px;color:var(--faint);margin-top:10px;line-height:1.5;max-width:74ch}
+
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mono)}
+th{
+  text-align:left;font-weight:500;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);padding:0 10px 8px 0;border-bottom:1px solid var(--edge);
+}
+td{padding:9px 10px 9px 0;border-bottom:1px solid var(--edge-soft);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;font-size:10.5px;letter-spacing:.06em;padding:2px 7px;border-radius:2px;border:1px solid currentColor;white-space:nowrap}
+.pill.yes{color:var(--lit)}
+.pill.no{color:var(--faint)}
+.pill.flare{color:var(--caution)}
+.tablescroll{overflow-x:auto}
+
+/* ---------- flags ---------- */
+.flag{
+  border-left:3px solid var(--caution);background:var(--panel-2);
+  padding:11px 14px;border-radius:0 3px 3px 0;margin-bottom:9px;font-size:13.5px;color:var(--ink)
+}
+.flag.info{border-left-color:var(--dark)}
+.flag strong{font-family:var(--mono);font-weight:600;font-size:12px;letter-spacing:.05em;display:block;margin-bottom:3px;color:var(--dim)}
+
+/* ---------- case note ---------- */
+#note{
+  width:100%;background:var(--void);color:var(--ink);border:1px solid var(--edge);border-radius:3px;
+  font-family:var(--mono);font-size:12.5px;line-height:1.6;padding:13px;min-height:150px;resize:vertical;
+}
+
+footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--edge-soft);font-size:12px;color:var(--faint);line-height:1.65;max-width:82ch}
+footer a{color:var(--dim)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="mast">
+  <div>
+    <h1>Orbital <span class="amber">Illumination</span> Screen</h1>
+    <div class="sub">Earth-shadow geometry · satellite &amp; debris flare screening</div>
+  </div>
+  <div class="ver">Field tool · geometric model<br>Screens one hypothesis only</div>
+</header>
+
+<div class="grid">
+
+  <!-- ============ INPUT CONSOLE ============ -->
+  <div>
+    <section class="panel">
+      <p class="eyebrow">When &amp; where</p>
+
+      <div class="field">
+        <label for="date">Date of sighting (local)</label>
+        <input type="date" id="date" value="2025-10-14">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="time">Local time</label>
+          <input type="time" id="time" value="19:32">
+        </div>
+        <div class="field">
+          <label for="tz">UTC offset</label>
+          <input type="number" id="tz" value="-7" step="0.5" min="-12" max="14">
+        </div>
+      </div>
+      <div class="field" style="margin-top:-6px">
+        <div class="hint">Enter the offset actually in force that night, daylight saving included. Arizona is &minus;7 year round; most of the US is &minus;4 to &minus;7.</div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="lat">Latitude &deg;</label>
+          <input type="number" id="lat" value="33.45" step="0.0001" min="-90" max="90">
+        </div>
+        <div class="field">
+          <label for="lon">Longitude &deg;</label>
+          <input type="number" id="lon" value="-112.07" step="0.0001" min="-180" max="180">
+        </div>
+      </div>
+      <div class="field" style="margin-top:-6px">
+        <div class="hint">West longitude is negative. Use the witness's position, not the nearest town centre.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p class="eyebrow">Where the object was</p>
+
+      <div class="field">
+        <label for="elev">Elevation above horizon &deg;</label>
+        <input type="number" id="elev" value="15" step="0.5" min="0" max="90">
+        <div class="hint">Arm extended: fist &asymp; 10&deg;, open hand span &asymp; 20&deg;, three fingers &asymp; 5&deg;, thumb &asymp; 2&deg;.</div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="az">Compass bearing &deg;</label>
+          <input type="number" id="az" value="100" step="1" min="0" max="360">
+        </div>
+        <div class="field">
+          <label for="dec">Mag. declination &deg;</label>
+          <input type="number" id="dec" value="0" step="0.1" min="-30" max="30">
+        </div>
+      </div>
+      <div class="field" style="margin-top:-6px">
+        <div class="hint">Enter the bearing as read. Add declination only if the reading came from a magnetic compass &mdash; east is positive. Leave at 0 for a true bearing.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p class="eyebrow">Behaviour (optional)</p>
+
+      <div class="field">
+        <label for="rate">Seconds to cross one fist-width (10&deg;)</label>
+        <input type="number" id="rate" value="" step="1" min="0" placeholder="leave blank if not known">
+        <div class="hint">A very large number, or blank, means it appeared to hold still.</div>
+      </div>
+
+      <div class="field">
+        <label>Reported characteristics</label>
+        <div class="checks">
+          <label class="chk"><input type="checkbox" id="c-strobe"><span>Blinking, strobing, or coloured lights</span></label>
+          <label class="chk"><input type="checkbox" id="c-sound"><span>Any sound heard</span></label>
+          <label class="chk"><input type="checkbox" id="c-manoeuvre"><span>Stopped, hovered, turned, or reversed</span></label>
+          <label class="chk"><input type="checkbox" id="c-long"><span>Visible longer than 15 minutes in one spot</span></label>
+          <label class="chk"><input type="checkbox" id="c-return"><span>Faded out, then came back</span></label>
+          <label class="chk"><input type="checkbox" id="c-red"><span>Reddened or turned orange before fading</span></label>
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button class="primary" id="run">Run screen</button>
+        <button id="example">Load example case</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div id="results"></div>
+
+</div>
+
+<footer>
+  <strong style="color:var(--dim);font-family:var(--mono);font-size:11px;letter-spacing:.1em;display:block;margin-bottom:7px">WHAT THIS TOOL DOES AND DOES NOT DO</strong>
+  It tests one hypothesis: could sunlight have reached an object in orbit along the reported line of sight at the reported time? A negative result is strong &mdash; it eliminates satellites and debris on physical grounds. A positive result eliminates nothing; it only means the hypothesis survives, and you still need a pass prediction, a motion check, and a brightness check. This tool never identifies an object.
+  <br><br>
+  The shadow ceiling has two branches. Above the Sun&rsquo;s depression angle the line of sight leaves the shadow on the near side; below it, the sightline crosses the shadow axis and exits the far side at a much greater distance, never closer than R&middot;(csc&thinsp;&beta;/2 &minus; 1). Directions below the depression angle are therefore demanding, not impossible &mdash; the tool solves both branches and reports which one applies.<br><br>Model: geometric cylindrical shadow, Earth radius 6371&nbsp;km, opaque atmosphere allowance 80&nbsp;km, solar position by the NOAA algorithm (no refraction correction, so &beta; is accurate to about half a degree within the first few minutes after sunset and better thereafter). Brightness figures are order-of-magnitude estimates and depend on object size, shape, coating, and phase angle &mdash; treat them as guidance, not measurement.
+  <br><br>
+  Verify every surviving hypothesis against real orbital elements: <a href="https://heavens-above.com">heavens-above.com</a>, <a href="https://celestrak.org">celestrak.org</a>, <a href="https://www.n2yo.com">n2yo.com</a>. Use elements dated within a few days of the sighting.
+</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+const R      = 6371.0;          // Earth radius, km
+const R_ATM  = R + 80.0;        // opaque-atmosphere shadow radius, km
+const MU     = 398600.4418;     // gravitational parameter, km^3/s^2
+const SUN_SR = 0.267;           // solar semi-diameter, deg
+const D2R = Math.PI/180, R2D = 180/Math.PI;
+
+/* ============================================================
+   SOLAR POSITION  (NOAA general solar position algorithm)
+   ============================================================ */
+function solarPosition(y, mo, d, hh, mm, tz, lat, lon){
+  const utcMs = Date.UTC(y, mo-1, d, hh, mm) - tz*3600000;
+  const dt = new Date(utcMs);
+  const jd = utcMs/86400000 + 2440587.5;
+  const T  = (jd - 2451545.0)/36525;
+
+  const L0 = ((280.46646 + T*(36000.76983 + 0.0003032*T))%360 + 360)%360;
+  const M  = 357.52911 + T*(35999.05029 - 0.0001537*T);
+  const Mr = M*D2R;
+  const C  = (1.914602 - T*(0.004817 + 0.000014*T))*Math.sin(Mr)
+           + (0.019993 - 0.000101*T)*Math.sin(2*Mr)
+           + 0.000289*Math.sin(3*Mr);
+  const trueLong = L0 + C;
+  const omega = 125.04 - 1934.136*T;
+  const lam = trueLong - 0.00569 - 0.00478*Math.sin(omega*D2R);
+  const e0  = 23 + (26 + (21.448 - T*(46.815 + T*(0.00059 - T*0.001813)))/60)/60;
+  const eps = e0 + 0.00256*Math.cos(omega*D2R);
+  const dec = Math.asin(Math.sin(eps*D2R)*Math.sin(lam*D2R))*R2D;
+
+  const ecc = 0.016708634 - T*(0.000042037 + 0.0000001267*T);
+  const yv  = Math.pow(Math.tan(eps*D2R/2), 2);
+  const L0r = L0*D2R;
+  const Eot = 4*R2D*( yv*Math.sin(2*L0r) - 2*ecc*Math.sin(Mr)
+            + 4*ecc*yv*Math.sin(Mr)*Math.cos(2*L0r)
+            - 0.5*yv*yv*Math.sin(4*L0r) - 1.25*ecc*ecc*Math.sin(2*Mr) );
+
+  const utMin = dt.getUTCHours()*60 + dt.getUTCMinutes() + dt.getUTCSeconds()/60;
+  let ha = (utMin + Eot + 4*lon)/4 - 180;
+  while (ha < -180) ha += 360;
+  while (ha >  180) ha -= 360;
+
+  const latR = lat*D2R, decR = dec*D2R, haR = ha*D2R;
+  const alt = Math.asin(Math.sin(latR)*Math.sin(decR) + Math.cos(latR)*Math.cos(decR)*Math.cos(haR))*R2D;
+  let az = Math.atan2(Math.sin(haR), Math.cos(haR)*Math.sin(latR) - Math.tan(decR)*Math.cos(latR))*R2D;
+  az = (az + 180 + 360)%360;
+  return {alt, az, dec};
+}
+
+/* Approximate local sunset time, for context in the case note. */
+function sunsetLocal(y, mo, d, tz, lat, lon){
+  let best = null;
+  for (let m = 6*60; m <= 24*60; m += 1){
+    const a = solarPosition(y, mo, d, Math.floor(m/60)%24, m%60, tz, lat, lon).alt;
+    if (best !== null && best.a > 0 && a <= 0) return {h:Math.floor(m/60)%24, m:m%60};
+    best = {a};
+  }
+  return null;
+}
+
+/* ============================================================
+   SHADOW GEOMETRY
+   Local ENU frame. Observer sits at R * zenith.
+   A point is sunlit if it is on the sunward side of the plane
+   through Earth's centre, or outside the shadow cylinder.
+   ============================================================ */
+function unitVec(elevDeg, azDeg){
+  const e = elevDeg*D2R, a = azDeg*D2R;
+  return [Math.cos(e)*Math.sin(a), Math.cos(e)*Math.cos(a), Math.sin(e)];
+}
+const dot = (a,b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+
+function shadowExit(sunAlt, sunAz, objElev, objAz, Reff){
+  const s = unitVec(sunAlt, sunAz);
+  const u = unitVec(objElev, objAz);
+  const q = s[2];            // zenith . sun
+  const p = u[2];            // zenith . lookdir
+  const us = dot(u, s);
+
+  // crossing into the sunward hemisphere
+  let tPlane = Infinity;
+  if (us > 1e-12){ const t = -R*q/us; if (t > 0) tPlane = t; }
+
+  // exiting the shadow cylinder
+  let tCyl = Infinity;
+  const A = 1 - us*us;
+  const B = 2*R*(p - q*us);
+  const C = R*R*(1 - q*q) - Reff*Reff;
+  if (Math.abs(A) < 1e-13){
+    if (Math.abs(B) > 1e-13){ const t = -C/B; if (t > 0) tCyl = t; }
+  } else {
+    const disc = B*B - 4*A*C;
+    if (disc >= 0){
+      const sq = Math.sqrt(disc);
+      const roots = [(-B+sq)/(2*A), (-B-sq)/(2*A)].filter(t => t > 0);
+      if (roots.length) tCyl = Math.min.apply(null, roots);
+    }
+  }
+
+  const t = Math.min(tPlane, tCyl);
+  if (!isFinite(t) || t > 5e6) return {range:Infinity, alt:Infinity, side:'none'};
+  const alt = Math.sqrt(R*R + 2*R*p*t + t*t) - R;
+  // Which side of the shadow axis does it exit on? Compare the exit point's
+  // offset from the Earth-Sun axis with the observer's own offset.
+  // dot(perp_observer, perp_exit) = R^2(1-q^2) + R*t*(p - q*us)
+  let side;
+  if (tPlane < tCyl) side = 'sunward';
+  else side = (R*R*(1 - q*q) + R*t*(p - q*us)) >= 0 ? 'near' : 'far';
+  return {range:t, alt, side};
+}
+
+/* ============================================================
+   BRIGHTNESS MODEL  (order-of-magnitude)
+   ============================================================ */
+const SKY_ANCHORS = [[0,-3.0],[3,-0.5],[6,2.0],[9,3.3],[12,4.5],[15,5.4],[18,6.0],[24,6.5]];
+function skyLimit(beta){
+  if (beta <= 0) return -4.0;
+  if (beta >= 24) return 6.5;
+  for (let i=0;i<SKY_ANCHORS.length-1;i++){
+    const [x0,y0] = SKY_ANCHORS[i], [x1,y1] = SKY_ANCHORS[i+1];
+    if (beta >= x0 && beta <= x1) return y0 + (y1-y0)*(beta-x0)/(x1-x0);
+  }
+  return 6.5;
+}
+
+const CLASSES = [
+  {name:'Space station (ISS-class)', m0:-1.5, lo:300,  hi:500  },
+  {name:'Spent rocket body (~10 m)', m0: 2.5, lo:200,  hi:2000 },
+  {name:'Active satellite / Starlink', m0: 6.5, lo:300,  hi:1300 },
+  {name:'Debris fragment (~1 m)',     m0: 8.5, lo:200,  hi:2000 },
+  {name:'Navigation satellite (MEO)', m0: 5.0, lo:19000,hi:24000},
+  {name:'Geostationary satellite',    m0: 6.5, lo:35000,hi:36600}
+];
+
+const DETECTORS = [
+  {name:'Unaided eye, dark adapted', floor:5.5,  bonus:0.0},
+  {name:'Phone camera, braced',      floor:3.5,  bonus:0.5},
+  {name:'Standard video / security', floor:2.5,  bonus:0.0},
+  {name:'Gen 3 night vision',        floor:8.5,  bonus:2.5},
+  {name:'Fast astronomical camera',  floor:10.0, bonus:4.0},
+  {name:'Small telescope + camera',  floor:14.0, bonus:5.0}
+];
+
+const appMag = (m0, rangeKm) => m0 + 5*Math.log10(rangeKm/1000);
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $  = id => document.getElementById(id);
+const f1 = n => n.toFixed(1);
+function angDiff(a,b){ let d = Math.abs(a-b)%360; return d > 180 ? 360-d : d; }
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* ============================================================
+   SIGNATURE FIGURE — Earth-shadow cross-section, log radial scale
+   ============================================================ */
+const H_MAX = 42000;                        // top of the drawn shell, km
+const RIN = 88, ROUT = 292;                 // screen radii
+const CX = 356, CY = 336;
+const LOGD = Math.log10(1 + H_MAX/100);
+function rScreen(h){
+  const hh = Math.max(0, Math.min(h, H_MAX));
+  return RIN + (ROUT-RIN)*Math.log10(1 + hh/100)/LOGD;
+}
+function mapPt(x, y){                       // real-space km -> screen px
+  const r = Math.hypot(x,y);
+  const rs = rScreen(r - R);
+  const k = r < 1e-9 ? 0 : rs/r;
+  return [CX + x*k, CY - y*k];
+}
+const P = ([x,y]) => x.toFixed(1)+','+y.toFixed(1);
+
+function crossSection(beta, objElev, antiSide, exitAlt){
+  const b = beta*D2R;
+  // observer at 12 o'clock; sun to the right, beta below the horizon
+  const sx = Math.cos(b), sy = -Math.sin(b);          // unit vector toward sun
+  const px = -sy, py = sx;                            // perpendicular to it
+  const FAR = 260000;
+
+  // shadow cylinder edges, sampled and mapped through the log transform
+  function edge(sign){
+    const pts = [];
+    for (let i=0;i<=180;i++){
+      const lam = FAR*Math.pow(i/180, 2.4);
+      const x = sign*R_ATM*px - lam*sx;
+      const y = sign*R_ATM*py - lam*sy;
+      if (Math.hypot(x,y) - R > H_MAX*1.02) break;
+      pts.push(mapPt(x,y));
+    }
+    return pts;
+  }
+  const eA = edge(+1), eB = edge(-1);
+
+  let d = 'M ' + P(eA[0]);
+  for (let i=1;i<eA.length;i++) d += ' L ' + P(eA[i]);
+  d += ' A '+ROUT+' '+ROUT+' 0 0 0 '+P(eB[eB.length-1]);
+  for (let i=eB.length-1;i>=0;i--) d += ' L ' + P(eB[i]);
+  d += ' A '+RIN+' '+RIN+' 0 0 1 '+P(eA[0]) + ' Z';
+
+  // line of sight from the observer at 12 o'clock
+  const oe = objElev*D2R, sgn = antiSide ? -1 : 1;
+  const lx = sgn*Math.cos(oe), ly = Math.sin(oe);
+  const offScale = !isFinite(exitAlt) || exitAlt > H_MAX;
+  let los = '', markX = null, markY = null, endX = null, endY = null;
+  for (let i=0;i<=300;i++){
+    const t = FAR*Math.pow(i/300, 2.6);
+    const x = lx*t, y = R + ly*t;
+    const h = Math.hypot(x,y) - R;
+    if (h > H_MAX) break;
+    const q = mapPt(x,y);
+    los += (i===0?'M ':' L ') + P(q);
+    endX = q[0]; endY = q[1];
+    if (!offScale && markX === null && h >= exitAlt){ markX = q[0]; markY = q[1]; }
+  }
+
+  const shells = [
+    {h:400,  l:'400 km  ISS'},
+    {h:800,  l:'800 km'},
+    {h:2000, l:'2 000 km  LEO ceiling'},
+    {h:20200,l:'20 200 km  MEO'},
+    {h:35786,l:'35 786 km  GEO'}
+  ];
+  let shellSvg = '';
+  shells.forEach(s => {
+    const r = rScreen(s.h);
+    shellSvg += `<circle cx="${CX}" cy="${CY}" r="${r.toFixed(1)}" fill="none" stroke="var(--edge)" stroke-width="1" stroke-dasharray="2 5"/>`;
+    shellSvg += `<text x="${CX}" y="${(CY+r-6).toFixed(1)}" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--faint)" letter-spacing="0.06em">${s.l}</text>`;
+  });
+
+  // incoming sunlight
+  let rays = '';
+  for (let i=0;i<5;i++){
+    const off = (i-2)*46;
+    const x0 = sx*ROUT*1.15 + px*off, y0 = sy*ROUT*1.15 + py*off;
+    const x1 = sx*(ROUT*0.62) + px*off, y1 = sy*(ROUT*0.62) + py*off;
+    rays += `<line x1="${(CX+x0).toFixed(1)}" y1="${(CY-y0).toFixed(1)}" x2="${(CX+x1).toFixed(1)}" y2="${(CY-y1).toFixed(1)}" stroke="var(--lit)" stroke-width="1" opacity="0.45"/>`;
+  }
+
+  const obs = mapPt(0, R);
+  let mark = '';
+  if (markX !== null){
+    const lab = Math.round(exitAlt).toLocaleString() + ' km';
+    const side = antiSide ? 'end' : 'start';
+    const dx = antiSide ? -16 : 16;
+    mark = `<circle cx="${markX.toFixed(1)}" cy="${markY.toFixed(1)}" r="5.5" fill="var(--lit)"/>
+       <circle cx="${markX.toFixed(1)}" cy="${markY.toFixed(1)}" r="11" fill="none" stroke="var(--lit)" stroke-width="1" opacity="0.5"/>
+       <text x="${(markX+dx).toFixed(1)}" y="${(markY+4).toFixed(1)}" text-anchor="${side}" font-family="var(--mono)" font-size="11" fill="var(--lit)">${lab}</text>`;
+  } else if (offScale && endX !== null){
+    const lab = isFinite(exitAlt) ? 'reaches sunlight only at ' + Math.round(exitAlt).toLocaleString() + ' km' : 'no exit within 5 million km';
+    const side = antiSide ? 'start' : 'end';
+    const dx = antiSide ? 12 : -12;
+    mark = `<circle cx="${endX.toFixed(1)}" cy="${endY.toFixed(1)}" r="4.5" fill="none" stroke="var(--dark)" stroke-width="1.6"/>
+       <text x="${(endX+dx).toFixed(1)}" y="${(endY-9).toFixed(1)}" text-anchor="${side}" font-family="var(--mono)" font-size="10.5" fill="var(--dark)">still in shadow at the edge of this scale</text>
+       <text x="${(endX+dx).toFixed(1)}" y="${(endY+4).toFixed(1)}" text-anchor="${side}" font-family="var(--mono)" font-size="10.5" fill="var(--dark)">${lab}</text>`;
+  }
+
+  const antiLabel = antiSide ? 'toward the shadow' : 'toward the sunset';
+
+  return `
+  <svg viewBox="0 0 712 660" role="img" aria-label="Cross-section of Earth's shadow with the reported line of sight">
+    <circle cx="${CX}" cy="${CY}" r="${ROUT}" fill="var(--lit-soft)" opacity="0.30"/>
+    <path d="${d}" fill="var(--dark-soft)" opacity="0.96"/>
+    <path d="${d}" fill="none" stroke="var(--dark)" stroke-width="1.1" opacity="0.65"/>
+    ${shellSvg}
+    ${rays}
+    <circle cx="${CX}" cy="${CY}" r="${RIN}" fill="var(--void)" stroke="var(--edge)" stroke-width="1"/>
+    <text x="${CX}" y="${CY+4}" text-anchor="middle" font-family="var(--mono)" font-size="10" fill="var(--faint)" letter-spacing="0.18em">EARTH</text>
+    <path d="${los}" fill="none" stroke="var(--ink)" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.85"/>
+    ${mark}
+    <circle cx="${obs[0].toFixed(1)}" cy="${obs[1].toFixed(1)}" r="4" fill="var(--ink)"/>
+    <text x="${obs[0].toFixed(1)}" y="${(obs[1]-11).toFixed(1)}" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--ink)" letter-spacing="0.1em">OBSERVER</text>
+    <text x="${(CX+ROUT*0.60).toFixed(0)}" y="46" font-family="var(--mono)" font-size="10.5" fill="var(--lit)" letter-spacing="0.16em">SUNLIT</text>
+    <text x="34" y="46" font-family="var(--mono)" font-size="10.5" fill="var(--dark)" letter-spacing="0.16em">EARTH&rsquo;S SHADOW</text>
+    <text x="34" y="640" font-family="var(--mono)" font-size="9.5" fill="var(--faint)" letter-spacing="0.08em">Sun ${f1(beta)}&deg; below the horizon &middot; line of sight at ${f1(objElev)}&deg;, ${antiLabel}</text>
+  </svg>`;
+}
+
+/* ============================================================
+   COMPANION FIGURE — shadow ceiling vs elevation
+   ============================================================ */
+function ceilingCurve(sunAlt, sunAz, objAz, objElev, exitAlt){
+  const W = 712, H = 300, L = 66, Rm = 18, T = 18, B = 44;
+  const yMin = 100, yMax = 200000;
+  const ly = v => Math.log10(Math.max(yMin, Math.min(v, yMax)));
+  const py = v => T + (H-T-B)*(1 - (ly(v)-ly(yMin))/(ly(yMax)-ly(yMin)));
+  const px = e => L + (W-L-Rm)*(e/90);
+
+  let pts = [], firstE = null;
+  for (let e=0.5;e<=90;e+=0.5){
+    const r = shadowExit(sunAlt, sunAz, e, objAz, R_ATM);
+    if (!isFinite(r.alt) || r.alt > yMax) continue;
+    if (firstE === null) firstE = e;
+    pts.push([px(e), py(r.alt)]);
+  }
+  let path = pts.map((p,i)=>(i?' L ':'M ')+P(p)).join('');
+
+  let deadZone = '';
+  if (firstE !== null && firstE > 1){
+    deadZone = `<rect x="${L}" y="${T}" width="${(px(firstE)-L).toFixed(1)}" height="${H-T-B}" fill="var(--dark)" opacity="0.16"/>
+      <text x="${((L+px(firstE))/2).toFixed(1)}" y="${T+18}" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--dark)" letter-spacing="0.1em">&gt;200,000 km BELOW ${firstE.toFixed(0)}&deg;</text>`;
+  }
+
+  let bands = '';
+  [[200,2000,'LEO','var(--lit)'],[19000,24000,'MEO','var(--dark)'],[35000,36600,'GEO','var(--dark)']].forEach(([a,b,l,c])=>{
+    const y0 = py(b), y1 = py(a);
+    bands += `<rect x="${L}" y="${y0.toFixed(1)}" width="${W-L-Rm}" height="${(y1-y0).toFixed(1)}" fill="${c}" opacity="0.09"/>`;
+    bands += `<text x="${W-Rm-4}" y="${(y0+11).toFixed(1)}" text-anchor="end" font-family="var(--mono)" font-size="9" fill="${c}" opacity="0.85" letter-spacing="0.12em">${l}</text>`;
+  });
+
+  let ticks = '';
+  [100,1000,10000,100000].forEach(v=>{
+    const y = py(v);
+    ticks += `<line x1="${L}" y1="${y.toFixed(1)}" x2="${W-Rm}" y2="${y.toFixed(1)}" stroke="var(--edge-soft)" stroke-width="1"/>`;
+    ticks += `<text x="${L-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end" font-family="var(--mono)" font-size="9" fill="var(--faint)">${v.toLocaleString()}</text>`;
+  });
+  [0,15,30,45,60,75,90].forEach(e=>{
+    ticks += `<text x="${px(e).toFixed(1)}" y="${H-B+18}" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--faint)">${e}&deg;</text>`;
+  });
+
+  const ox = px(objElev);
+  let mk = `<line x1="${ox.toFixed(1)}" y1="${T}" x2="${ox.toFixed(1)}" y2="${H-B}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
+    <text x="${ox.toFixed(1)}" y="${H-B+30}" text-anchor="middle" font-family="var(--mono)" font-size="9.5" fill="var(--ink)">reported</text>`;
+  if (isFinite(exitAlt) && exitAlt <= yMax){
+    const oy = py(exitAlt);
+    const anchor = ox > W*0.7 ? 'end' : 'start';
+    const lx2 = ox + (anchor === 'end' ? -11 : 11);
+    mk += `<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="5.5" fill="var(--lit)"/>
+      <text x="${lx2.toFixed(1)}" y="${(oy-9).toFixed(1)}" text-anchor="${anchor}" font-family="var(--mono)" font-size="11" fill="var(--lit)">${Math.round(exitAlt).toLocaleString()} km</text>`;
+  } else {
+    mk += `<text x="${ox.toFixed(1)}" y="${T+34}" text-anchor="middle" font-family="var(--mono)" font-size="10.5" fill="var(--dark)">exceeds 200,000 km</text>`;
+  }
+
+  return `
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Minimum sunlit altitude against elevation angle">
+    ${deadZone}${bands}${ticks}
+    <path d="${path}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
+    ${mk}
+    <line x1="${L}" y1="${H-B}" x2="${W-Rm}" y2="${H-B}" stroke="var(--edge)" stroke-width="1"/>
+    <line x1="${L}" y1="${T}" x2="${L}" y2="${H-B}" stroke="var(--edge)" stroke-width="1"/>
+    <text x="${L}" y="${H-6}" font-family="var(--mono)" font-size="9.5" fill="var(--faint)" letter-spacing="0.1em">ELEVATION ABOVE HORIZON</text>
+    <text x="14" y="${T+8}" font-family="var(--mono)" font-size="9.5" fill="var(--faint)" letter-spacing="0.1em" transform="rotate(-90 14 ${T+8})" text-anchor="end">MINIMUM SUNLIT ALTITUDE, km</text>
+  </svg>`;
+}
+
+/* ============================================================
+   MAIN
+   ============================================================ */
+function run(){
+  const dparts = ($('date').value || '2025-10-14').split('-').map(Number);
+  const tparts = ($('time').value || '19:32').split(':').map(Number);
+  const tz   = parseFloat($('tz').value)   || 0;
+  const lat  = parseFloat($('lat').value)  || 0;
+  const lon  = parseFloat($('lon').value)  || 0;
+  const elev = Math.max(0, Math.min(90, parseFloat($('elev').value) || 0));
+  const azRaw= parseFloat($('az').value)   || 0;
+  const decl = parseFloat($('dec').value)  || 0;
+  const objAz = ((azRaw + decl)%360 + 360)%360;
+
+  const sun  = solarPosition(dparts[0], dparts[1], dparts[2], tparts[0], tparts[1], tz, lat, lon);
+  const beta = -sun.alt;
+  const antiAz = (sun.az + 180)%360;
+  const offAnti = angDiff(objAz, antiAz);
+
+  const out = $('results');
+
+  if (sun.alt > -0.2){
+    out.innerHTML = `<div class="verdict na"><div class="tag">Result</div>
+      <h2>The Sun was still up &mdash; the screen does not apply</h2>
+      <p>Solar elevation was ${f1(sun.alt)}&deg; above the horizon at the time entered. Earth's shadow had not yet reached the observer, so everything in orbit was sunlit and the sky was far too bright for any of it to be seen. Check the time, the UTC offset, and the sign of the longitude.</p></div>`;
+    return;
+  }
+
+  const geo = shadowExit(sun.alt, sun.az, elev, objAz, R);
+  const atm = shadowExit(sun.alt, sun.az, elev, objAz, R_ATM);
+  const limbA = shadowExit(sun.alt + SUN_SR, sun.az, elev, objAz, R_ATM);
+  const limbB = shadowExit(sun.alt - SUN_SR, sun.az, elev, objAz, R_ATM);
+  const penBand = (isFinite(limbA.alt) && isFinite(limbB.alt) && isFinite(atm.alt) && atm.alt < 40000)
+    ? Math.abs(limbB.alt - limbA.alt) : Infinity;
+
+  const h = atm.alt, range = atm.range;
+  const sky = skyLimit(beta);
+
+  /* ---- verdict ---- */
+  let cls, head, body;
+  if (!isFinite(h) || h > 60000){
+    cls='excluded'; head='Sunlight geometry excludes an orbiting object';
+    body='No object in Earth orbit &mdash; at any altitude, in any orbit &mdash; could have been in sunlight along this line of sight. The reported direction lies inside Earth&rsquo;s shadow all the way out past the geostationary belt and beyond. A satellite or debris flare is eliminated on physical grounds.';
+  } else if (h > 36600){
+    cls='excluded'; head='Effectively excluded &mdash; beyond the geostationary belt';
+    body=`Sunlight reached this line of sight only above about ${Math.round(h).toLocaleString()} km, past the geostationary belt at 35 786 km. The population out there is a sparse scatter of graveyard debris and high-apogee objects, all of them far fainter than the naked-eye limit and effectively motionless. A visible flare from orbit is eliminated.`;
+  } else if (h > 20000){
+    cls='unlikely'; head='Very unlikely &mdash; only the GEO belt was lit';
+    body=`Sunlight reached this direction only above about ${Math.round(h).toLocaleString()} km. That leaves geostationary and high-MEO objects, which are typically magnitude +11 or fainter and do not move against the stars. If the witness described a bright light or any motion, this is not it.`;
+  } else if (h > 2000){
+    cls='unlikely'; head='Unlikely &mdash; above the low-Earth-orbit ceiling';
+    body=`Sunlight reached this direction only above about ${Math.round(h).toLocaleString()} km, which is above the LEO ceiling of 2 000 km where almost all trackable hardware lives. Navigation constellations sit near 20 200 km. Possible in principle, but the population is thin and faint. Treat a bright, fast-moving object as inconsistent.`;
+  } else if (h > 200){
+    cls='possible'; head='Orbiting object possible &mdash; verify against real orbital elements';
+    body=`Anything above about ${Math.round(h)} km along this line of sight was in sunlight. That includes a large part of the low-Earth-orbit population. The geometry permits a satellite or debris flare; it does not confirm one. Run a pass prediction for this site and time before drawing any conclusion.`;
+  } else {
+    cls='possible'; head='Orbiting object possible &mdash; the whole orbital population was lit';
+    body='Twilight is shallow enough that essentially every satellite and debris object above the observer was still catching sunlight. The geometry rules nothing out at all, so it carries no evidential weight here. Everything now rests on the pass prediction, the motion, and the brightness.';
+  }
+
+  /* ---- flags ---- */
+  let flags = '';
+  const add = (t, txt, info) => { flags += `<div class="flag${info?' info':''}"><strong>${t}</strong>${txt}</div>`; };
+
+  if (elev < beta && offAnti < 20 && (!isFinite(h) || h > 36600)){
+    add('Deep in the shadow half of the sky',
+      `The object sat at ${f1(elev)}&deg; elevation with the Sun ${f1(beta)}&deg; down, only ${f1(offAnti)}&deg; from the anti-solar point &mdash; almost straight down the axis of Earth&rsquo;s shadow. Sunlight reaches this direction only beyond the geostationary belt, where nothing bright or fast-moving exists. State this in the case file as an altitude requirement, not as an impossibility: the geometry demands a specific number, and the number is what makes the finding defensible.`);
+  } else if (elev < beta && offAnti < 60){
+    add('Low in the shadow half of the sky',
+      `The object was below the Sun&rsquo;s depression angle and ${f1(offAnti)}&deg; from the anti-solar point. The shadow line is high here, which is why the altitude requirement above is so demanding &mdash; but the direction is far enough off the shadow axis that the requirement is finite rather than absolute.`);
+  }
+  if ($('c-strobe').checked) add('Strobing or coloured lights','Satellites and debris do not carry lights. Blinking or colour points to aircraft. Pull ADS-B history for the window.');
+  if ($('c-sound').checked) add('Sound reported','Nothing in orbit is audible from the ground. If the sound came from the object, it was in the atmosphere.');
+  if ($('c-manoeuvre').checked) add('Stopped, hovered, turned, or reversed','Orbital motion is a smooth great-circle arc at constant angular rate. Any of these behaviours rules out an orbiting object regardless of illumination.');
+  if ($('c-long').checked) add('Held one position over 15 minutes','A low-Earth-orbit pass lasts two to six minutes end to end. Only geostationary objects hold position, and they are far too faint to notice unaided.');
+  if ($('c-return').checked) add('Faded, then returned','A satellite entering Earth&rsquo;s shadow does not come back on the same pass. Reappearance points to a tumbling object with a variable glint, an aircraft turning, or two separate objects.');
+  if ($('c-red').checked) add('Reddened before fading','This one supports the satellite hypothesis. Sunlight grazing the ozone layer reddens before it is cut off, so a slow orange fade is the signature of a shadow entry.', true);
+
+  if (atm.side === 'far' && isFinite(h)){
+    const floor = R*(1/Math.sin(beta*D2R/2) - 1);
+    add('Far-branch geometry',
+      `The reported elevation is below the Sun&rsquo;s depression angle, so the line of sight runs deeper into the shadow, crosses the shadow axis, and exits the far side. Illumination here is possible but never closer than about ${Math.round(floor).toLocaleString()} km for this depression angle &mdash; that floor is R&middot;(csc&thinsp;&beta;/2 &minus; 1), reached at the horizon and rising without limit as the elevation approaches &beta;. Earth&rsquo;s real umbra is conical rather than cylindrical, which shortens far-branch distances by roughly one to five percent.`, true);
+  }
+
+  const rateSec = parseFloat($('rate').value);
+  let rateRow = '&mdash;';
+  if (isFinite(h) && h > 0 && h < 200000){
+    const v = Math.sqrt(MU/(R+h));
+    const maxRate = (v/range)*R2D;
+    const rf = maxRate < 0.01 ? maxRate.toFixed(4) : maxRate < 0.1 ? maxRate.toFixed(3) : maxRate.toFixed(2);
+    rateRow = rf + ' <span class="u">&deg;/s max</span>';
+    if (isFinite(rateSec) && rateSec > 0){
+      const obsRate = 10/rateSec;
+      if (obsRate > maxRate*1.25){
+        add('Faster than orbital motion allows',
+          `The reported rate of about ${obsRate.toFixed(2)}&deg;/s exceeds the ${maxRate.toFixed(2)}&deg;/s ceiling for a circular orbit at the required altitude. Too slow for a meteor, too fast for orbit &mdash; look at aircraft and low-altitude candidates.`);
+      } else if (obsRate < maxRate/25 && h < 2000){
+        add('Too slow for low Earth orbit',
+          `A near-stationary light is not consistent with an object at ${Math.round(h)} km, which would cross a fist-width in roughly ${(10/maxRate).toFixed(0)} seconds. Consider aircraft on a radial approach, a planet, or a balloon.`);
+      }
+    }
+  }
+
+  /* ---- visibility table ---- */
+  let visRows = '';
+  if (isFinite(range) && isFinite(h) && h < 200000){
+    CLASSES.forEach(c => {
+      const present = h <= c.hi;
+      const m = appMag(c.m0, range);
+      const mf = m - 5;
+      const steady = [], flare = [];
+      DETECTORS.forEach(d => {
+        const eff = Math.min(d.floor, sky + d.bonus);
+        if (m  <= eff) steady.push(d.name);
+        else if (mf <= eff) flare.push(d.name);
+      });
+      const short = n => n.split(',')[0].replace(' camera','').replace('Small telescope + camera','Telescope');
+      let verdictCell;
+      if (!present) verdictCell = '<span class="pill no">none at this altitude</span>';
+      else if (steady.length) verdictCell = steady.map(n=>`<span class="pill yes">${short(n)}</span>`).join(' ');
+      else if (flare.length)  verdictCell = flare.map(n=>`<span class="pill flare">${short(n)} (flare only)</span>`).join(' ');
+      else verdictCell = '<span class="pill no">below every threshold</span>';
+      visRows += `<tr>
+        <td>${c.name}${present?'':' <span style="color:var(--faint)">&mdash; not present</span>'}</td>
+        <td class="num">${present ? m.toFixed(1) : '&mdash;'}</td>
+        <td class="num">${present ? mf.toFixed(1) : '&mdash;'}</td>
+        <td>${verdictCell}</td></tr>`;
+    });
+  } else {
+    visRows = '<tr><td colspan="4" style="color:var(--dim)">No sunlit line of sight, so there is nothing to assess for visibility.</td></tr>';
+  }
+
+  /* ---- case note ---- */
+  const ss = sunsetLocal(dparts[0], dparts[1], dparts[2], tz, lat, lon);
+  const ssTxt = ss ? ` (sunset approx. ${String(ss.h).padStart(2,'0')}:${String(ss.m).padStart(2,'0')} local)` : '';
+  const note =
+`ORBITAL ILLUMINATION SCREEN
+Site: ${lat.toFixed(4)}, ${lon.toFixed(4)}
+Time: ${$('date').value} ${$('time').value} local (UTC${tz>=0?'+':''}${tz})${ssTxt}
+
+Solar position: elevation ${sun.alt.toFixed(2)} deg (depression ${beta.toFixed(2)} deg),
+azimuth ${sun.az.toFixed(1)} deg. Anti-solar point at azimuth ${antiAz.toFixed(1)} deg.
+
+Object reported at ${elev.toFixed(1)} deg elevation, azimuth ${objAz.toFixed(1)} deg true
+(${offAnti.toFixed(1)} deg from the anti-solar point).
+
+Earth-shadow geometry (cylindrical shadow, R = 6371 km, 80 km atmospheric allowance):
+  Minimum sunlit altitude along this line of sight: ${isFinite(h)?Math.round(h).toLocaleString()+' km':'no exit within 5 million km'}
+  Slant range to the shadow boundary: ${isFinite(range)?Math.round(range).toLocaleString()+' km':'n/a'}
+  Penumbral fade band: ${isFinite(penBand)?Math.round(penBand).toLocaleString()+' km':'n/a'}
+  Approximate sky limiting magnitude: ${sky.toFixed(1)}
+
+FINDING: ${head}.
+
+This screens the satellite and debris hypothesis only. It does not identify the object.
+Verify any surviving hypothesis against orbital elements dated within a few days of the
+sighting (heavens-above.com, celestrak.org, n2yo.com).`;
+
+  /* ---- render ---- */
+  const antiSide = offAnti < 90;
+  out.innerHTML = `
+    <div class="verdict ${cls}">
+      <div class="tag">Finding</div>
+      <h2>${head}</h2>
+      <p>${body}</p>
+    </div>
+
+    <div class="readout">
+      <div class="cell"><div class="k">Sun below horizon</div><div class="v">${f1(beta)}<span class="u">&deg;</span></div></div>
+      <div class="cell"><div class="k">Off anti-solar point</div><div class="v">${f1(offAnti)}<span class="u">&deg;</span></div></div>
+      <div class="cell"><div class="k">Min sunlit altitude</div><div class="v">${isFinite(h)?Math.round(h).toLocaleString():'none'}<span class="u"> km</span></div></div>
+      <div class="cell"><div class="k">Range to shadow edge</div><div class="v">${isFinite(range)?Math.round(range).toLocaleString():'&mdash;'}<span class="u"> km</span></div></div>
+      <div class="cell"><div class="k">Shadow exit</div><div class="v" style="font-size:16px">${atm.side==='far'?'far side':atm.side==='near'?'near side':atm.side==='sunward'?'sunward':'&mdash;'}</div></div>
+      <div class="cell"><div class="k">Penumbral fade band</div><div class="v">${isFinite(penBand)?Math.round(penBand).toLocaleString()+'<span class="u"> km</span>':'<span class="u">not applicable</span>'}</div></div>
+      <div class="cell"><div class="k">Sky limiting mag</div><div class="v">${sky.toFixed(1)}</div></div>
+      <div class="cell"><div class="k">Orbital rate ceiling</div><div class="v" style="font-size:16px">${rateRow}</div></div>
+      <div class="cell"><div class="k">Hard-edge Earth, no atmosphere</div><div class="v">${isFinite(geo.alt)?Math.round(geo.alt).toLocaleString():'none'}<span class="u"> km</span></div></div>
+    </div>
+
+    ${flags ? `<section class="panel" style="margin-bottom:18px"><p class="eyebrow">Checks worth noting</p>${flags}</section>` : ''}
+
+    <section class="panel figure">
+      <p class="eyebrow">Where the shadow line sits</p>
+      ${crossSection(beta, elev, antiSide, h)}
+      <figcaption>The radial scale is logarithmic so that low Earth orbit and the geostationary belt both fit on one page. Amber is sunlit; indigo is Earth&rsquo;s shadow. The dashed line is the reported line of sight, drawn in the Sun&ndash;zenith plane; the marker sits at the true computed exit altitude for the object&rsquo;s actual bearing, ${f1(offAnti)}&deg; from the anti-solar point.</figcaption>
+    </section>
+
+    <section class="panel figure">
+      <p class="eyebrow">Shadow ceiling across the sky, on this bearing</p>
+      ${ceilingCurve(sun.alt, sun.az, objAz, elev, h)}
+      <figcaption>How high an object had to be to stay in sunlight, at every elevation angle along the reported bearing. The marker is the reported position. Where the curve climbs above the shaded orbital bands, no real hardware could have been lit there.</figcaption>
+    </section>
+
+    <section class="panel" style="margin-bottom:18px">
+      <p class="eyebrow">If something was there, what would have seen it</p>
+      <div class="tablescroll"><table>
+        <thead><tr><th>Object class</th><th>Steady mag</th><th>Flaring mag</th><th>Detectable by</th></tr></thead>
+        <tbody>${visRows}</tbody>
+      </table></div>
+      <figcaption>Magnitudes are estimated for the slant range to the shadow boundary, ${isFinite(range)?Math.round(range).toLocaleString()+' km':'n/a'}. Flaring assumes a five-magnitude specular boost, a mid-range figure &mdash; real glints run three to eight magnitudes and last one to ten seconds. Detector thresholds are capped by the sky brightness at this stage of twilight, which is why instruments drop out in bright conditions even when the object is geometrically lit.</figcaption>
+    </section>
+
+    <section class="panel">
+      <p class="eyebrow">Case note</p>
+      <textarea id="note" readonly>${esc(note)}</textarea>
+      <div class="btnrow"><button id="copy">Copy case note</button></div>
+    </section>
+  `;
+
+  const cp = $('copy');
+  if (cp) cp.addEventListener('click', () => {
+    const ta = $('note');
+    ta.removeAttribute('readonly'); ta.select();
+    try { document.execCommand('copy'); } catch(e){}
+    if (navigator.clipboard) navigator.clipboard.writeText(ta.value).catch(()=>{});
+    ta.setAttribute('readonly','readonly');
+    cp.textContent = 'Copied';
+    setTimeout(()=>{ cp.textContent = 'Copy case note'; }, 1800);
+  });
+}
+
+/* ---- example case ---- */
+$('example').addEventListener('click', () => {
+  $('date').value='2025-10-14'; $('time').value='19:32'; $('tz').value='-7';
+  $('lat').value='33.45'; $('lon').value='-112.07';
+  $('elev').value='15'; $('az').value='100'; $('dec').value='0';
+  $('rate').value=''; 
+  ['c-strobe','c-sound','c-manoeuvre','c-long','c-return','c-red'].forEach(id=>{$(id).checked=false;});
+  run();
+});
+
+$('run').addEventListener('click', run);
+document.querySelectorAll('input').forEach(el => {
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+});
+
+run();
+})();
+</script>
+</body>
+</html>
