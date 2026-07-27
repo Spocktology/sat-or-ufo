@@ -108,7 +108,7 @@ button{
 }
 button:hover{background:var(--edge-soft);border-color:var(--dim)}
 button.primary{background:var(--lit);color:#231703;border-color:var(--lit);font-weight:600}
-button.primary:hover{background:#F2B355;border-color:#F2B355}
+button.primary:hover{background:#FFC66E;border-color:#FFC66E}
 .btnrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px}
 
 /* ---------- verdict ---------- */
@@ -186,7 +186,7 @@ footer a{color:var(--dim)}
 
 <header class="mast">
   <div>
-    <h1>Satellite <span class="amber">OR</span> UFO</h1>
+    <h1>Orbital <span class="amber">Illumination</span> Screen</h1>
     <div class="sub">Earth-shadow geometry · satellite &amp; debris flare screening</div>
   </div>
   <div class="ver">Field tool · geometric model<br>Screens one hypothesis only</div>
@@ -292,7 +292,7 @@ footer a{color:var(--dim)}
 
 <footer>
   <strong style="color:var(--dim);font-family:var(--mono);font-size:11px;letter-spacing:.1em;display:block;margin-bottom:7px">WHAT THIS TOOL DOES AND DOES NOT DO</strong>
-  It tests one hypothesis: could sunlight have reached an object in orbit along the reported line of sight at the reported time? A negative result is strong &mdash; it eliminates satellites and debris on physical grounds. A positive result eliminates nothing; it only means the hypothesis survives, and you still need a pass prediction, a motion check, and a brightness check. This tool never identifies an object.
+  It tests one hypothesis: could sunlight have reached an object in orbit along the reported line of sight at the reported time? The answer depends on the bearing as much as the time &mdash; low in the sunward sky, low Earth orbit stays lit for hours after the rest of the sky is dark, so never restate a result as a &ldquo;sun was too far down&rdquo; threshold without the bearing attached. A negative result is strong &mdash; it eliminates satellites and debris on physical grounds. A positive result eliminates nothing; it only means the hypothesis survives, and you still need a pass prediction, a motion check, and a brightness check. This tool never identifies an object.
   <br><br>
   The shadow ceiling has two branches. Above the Sun&rsquo;s depression angle the line of sight leaves the shadow on the near side; below it, the sightline crosses the shadow axis and exits the far side at a much greater distance, never closer than R&middot;(csc&thinsp;&beta;/2 &minus; 1). Directions below the depression angle are therefore demanding, not impossible &mdash; the tool solves both branches and reports which one applies.<br><br>Model: geometric cylindrical shadow, Earth radius 6371&nbsp;km, opaque atmosphere allowance 80&nbsp;km, solar position by the NOAA algorithm (no refraction correction, so &beta; is accurate to about half a degree within the first few minutes after sunset and better thereafter). Brightness figures are order-of-magnitude estimates and depend on object size, shape, coating, and phase angle &mdash; treat them as guidance, not measurement.
   <br><br>
@@ -726,7 +726,13 @@ function run(){
   if ($('c-manoeuvre').checked) add('Stopped, hovered, turned, or reversed','Orbital motion is a smooth great-circle arc at constant angular rate. Any of these behaviours rules out an orbiting object regardless of illumination.');
   if ($('c-long').checked) add('Held one position over 15 minutes','A low-Earth-orbit pass lasts two to six minutes end to end. Only geostationary objects hold position, and they are far too faint to notice unaided.');
   if ($('c-return').checked) add('Faded, then returned','A satellite entering Earth&rsquo;s shadow does not come back on the same pass. Reappearance points to a tumbling object with a variable glint, an aircraft turning, or two separate objects.');
-  if ($('c-red').checked) add('Reddened before fading','This one supports the satellite hypothesis. Sunlight grazing the ozone layer reddens before it is cut off, so a slow orange fade is the signature of a shadow entry.', true);
+  if ($('c-red').checked) add('Reddened before fading','This one supports the satellite hypothesis. Sunlight still reaching an object near the shadow boundary has grazed the atmospheric limb, and scattering through the lower atmosphere strips the short wavelengths much as it reddens a sunset. A slow orange fade over several seconds is the signature of a shadow entry.', true);
+
+  const offSun = 180 - offAnti;
+  if (offSun < 60 && elev < 30 && isFinite(h) && h <= 620){
+    add('Matches the Starlink horizon-flare profile',
+      `The object was ${f1(elev)}&deg; up and only ${f1(offSun)}&deg; from the Sun&rsquo;s azimuth, where sunlight reaches down to about ${Math.round(h)} km &mdash; inside the Starlink shells. This is the geometry that produces horizon flares: the flat antenna panel reflects sunlight specularly for roughly five to twenty seconds, tracing a short straight path low in the sky before fading. Several can appear at once on crossing paths, as bright as Venus, and visible through light pollution and thin cloud. It is the single most misreported satellite event, and it happens for hours after the rest of the sky has gone dark. Treat this as a positive signature to test, not merely a surviving hypothesis: simulate it against real elements before looking further.`, true);
+  }
 
   if (atm.side === 'far' && isFinite(h)){
     const floor = R*(1/Math.sin(beta*D2R/2) - 1);
@@ -891,3 +897,4 @@ run();
 </script>
 </body>
 </html>
+
