@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Satellite or UFO Check — field tool</title>
+<title>Orbital Illumination Screen — field tool</title>
 <meta name="description" content="Field tool for UAP investigators. Enter time, place, and the reported position of a light in the sky; returns whether sunlight could have reached an object in Earth orbit along that line of sight, and what would have been able to see it.">
-<meta name="theme-color" content="#080B16">
+<meta name="theme-color" content="#0A0C10">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Satellite or UFO Check">
+<meta property="og:title" content="Orbital Illumination Screen">
 <meta property="og:description" content="Earth-shadow geometry for satellite and debris flare screening. Screens one hypothesis; does not identify objects.">
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,20 +15,20 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --void:      #0A0C10;
-  --panel:     #14171F;
-  --panel-2:   #1D212C;
-  --edge:      #5D6890;
-  --edge-soft: #333C55;
-  --ink:       #F5F7FA;
-  --dim:       #B8C0D4;
-  --faint:     #9DA6BE;
-  --lit:       #FFB44A;   /* sunlit */
-  --lit-soft:  #7A5520;
-  --dark:      #8CA9FF;   /* in shadow */
-  --dark-soft: #232E5C;
-  --caution:   #FF7A5F;
-  --ok:        #5FD3A8;
+  --void:#0A0C10;
+  --panel:#14171F;
+  --panel-2:#1D212C;
+  --edge:#5D6890;
+  --edge-soft:#333C55;
+  --ink:#F5F7FA;
+  --dim:#B8C0D4;
+  --faint:#9DA6BE;
+  --lit:#FFB44A;         /* sunlit */
+  --lit-soft:#7A5520;
+  --dark:#8CA9FF;        /* in shadow */
+  --dark-soft:#232E5C;
+  --caution:#FF7A5F;
+  --ok:#5FD3A8;
   --mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --sans:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
@@ -263,7 +263,7 @@ footer a{color:var(--dim)}
       <div class="field">
         <label for="rate">Seconds to cross one fist-width (10&deg;)</label>
         <input type="number" id="rate" value="" step="1" min="0" placeholder="leave blank if not known">
-        <div class="hint">A very large number, or blank, means it appeared to hold still.</div>
+        <div class="hint">A very large number, or blank, means it appeared to hold still. Orbital motion has both a ceiling and a floor at any given altitude, so this tests in both directions.</div>
       </div>
 
       <div class="field">
@@ -745,16 +745,23 @@ function run(){
   if (isFinite(h) && h > 0 && h < 200000){
     const v = Math.sqrt(MU/(R+h));
     const maxRate = (v/range)*R2D;
-    const rf = maxRate < 0.01 ? maxRate.toFixed(4) : maxRate < 0.1 ? maxRate.toFixed(3) : maxRate.toFixed(2);
-    rateRow = rf + ' <span class="u">&deg;/s max</span>';
+    // A circular orbit's velocity is perpendicular to its geocentric radius, so
+    // the component along the line of sight is bounded. cos(gamma) is the angle
+    // between the line of sight and the satellite's radius vector; the slowest
+    // an object at this altitude can appear at this elevation is maxRate*cos(gamma).
+    const cosGamma = Math.min(1, (range + R*Math.sin(elev*D2R))/(R + h));
+    const minRate = maxRate*cosGamma;
+    const fmt = r => r < 0.01 ? r.toFixed(4) : r < 0.1 ? r.toFixed(3) : r.toFixed(2);
+    rateRow = (cosGamma > 0.97 ? fmt(maxRate) : fmt(minRate) + '&ndash;' + fmt(maxRate))
+              + ' <span class="u">&deg;/s</span>';
     if (isFinite(rateSec) && rateSec > 0){
       const obsRate = 10/rateSec;
       if (obsRate > maxRate*1.25){
         add('Faster than orbital motion allows',
-          `The reported rate of about ${obsRate.toFixed(2)}&deg;/s exceeds the ${maxRate.toFixed(2)}&deg;/s ceiling for a circular orbit at the required altitude. Too slow for a meteor, too fast for orbit &mdash; look at aircraft and low-altitude candidates.`);
-      } else if (obsRate < maxRate/25 && h < 2000){
-        add('Too slow for low Earth orbit',
-          `A near-stationary light is not consistent with an object at ${Math.round(h)} km, which would cross a fist-width in roughly ${(10/maxRate).toFixed(0)} seconds. Consider aircraft on a radial approach, a planet, or a balloon.`);
+          `The reported rate of about ${obsRate.toFixed(2)}&deg;/s exceeds the ${fmt(maxRate)}&deg;/s ceiling for a circular orbit at the required altitude, even allowing for the observer&rsquo;s own motion with Earth&rsquo;s rotation. Too slow for a meteor, too fast for orbit &mdash; look at aircraft and other atmospheric candidates.`);
+      } else if (obsRate < minRate/1.25){
+        add('Slower than orbital motion allows',
+          `An object at ${Math.round(h).toLocaleString()} km seen at ${f1(elev)}&deg; elevation cannot appear to move more slowly than about ${fmt(minRate)}&deg;/s &mdash; roughly ${(10/minRate).toFixed(0)} seconds to cross a fist-width. That floor holds because a circular orbit&rsquo;s velocity is perpendicular to its radius, so only part of it can point along your line of sight. The reported ${obsRate.toFixed(3)}&deg;/s is below it. Consider aircraft on a radial approach, a bright star or planet, or a balloon.`);
       }
     }
   }
@@ -807,6 +814,7 @@ Earth-shadow geometry (cylindrical shadow, R = 6371 km, 80 km atmospheric allowa
   Slant range to the shadow boundary: ${isFinite(range)?Math.round(range).toLocaleString()+' km':'n/a'}
   Penumbral fade band: ${isFinite(penBand)?Math.round(penBand).toLocaleString()+' km':'n/a'}
   Approximate sky limiting magnitude: ${sky.toFixed(1)}
+  Apparent angular rate window for a circular orbit at that altitude: ${rateRow.replace(/<[^>]*>/g,'').replace('&ndash;','-').trim()} deg/s
 
 FINDING: ${head}.
 
@@ -831,7 +839,7 @@ sighting (heavens-above.com, celestrak.org, n2yo.com).`;
       <div class="cell"><div class="k">Shadow exit</div><div class="v" style="font-size:16px">${atm.side==='far'?'far side':atm.side==='near'?'near side':atm.side==='sunward'?'sunward':'&mdash;'}</div></div>
       <div class="cell"><div class="k">Penumbral fade band</div><div class="v">${isFinite(penBand)?Math.round(penBand).toLocaleString()+'<span class="u"> km</span>':'<span class="u">not applicable</span>'}</div></div>
       <div class="cell"><div class="k">Sky limiting mag</div><div class="v">${sky.toFixed(1)}</div></div>
-      <div class="cell"><div class="k">Orbital rate ceiling</div><div class="v" style="font-size:16px">${rateRow}</div></div>
+      <div class="cell"><div class="k">Orbital rate window</div><div class="v" style="font-size:16px">${rateRow}</div></div>
       <div class="cell"><div class="k">Hard-edge Earth, no atmosphere</div><div class="v">${isFinite(geo.alt)?Math.round(geo.alt).toLocaleString():'none'}<span class="u"> km</span></div></div>
     </div>
 
@@ -897,4 +905,3 @@ run();
 </script>
 </body>
 </html>
-
