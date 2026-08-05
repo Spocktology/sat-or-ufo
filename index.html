@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orbital Illumination Screen — field tool</title>
+<title>Satellite OR UFO — field tool</title>
 <meta name="description" content="Field tool for UAP investigators. Enter time, place, and the reported position of a light in the sky; returns whether sunlight could have reached an object in Earth orbit along that line of sight, and what would have been able to see it.">
 <meta name="theme-color" content="#0A0C10">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Orbital Illumination Screen">
+<meta property="og:title" content="Satellite OR UFO">
 <meta property="og:description" content="Earth-shadow geometry for satellite and debris flare screening. Screens one hypothesis; does not identify objects.">
 <meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -186,7 +186,7 @@ footer a{color:var(--dim)}
 
 <header class="mast">
   <div>
-    <h1>Orbital <span class="amber">Illumination</span> Screen</h1>
+    <h1>Satellite <span class="amber">OR</span> UFO</h1>
     <div class="sub">Earth-shadow geometry · satellite &amp; debris flare screening</div>
   </div>
   <div class="ver">Field tool · geometric model<br>Screens one hypothesis only</div>
@@ -263,7 +263,7 @@ footer a{color:var(--dim)}
       <div class="field">
         <label for="rate">Seconds to cross one fist-width (10&deg;)</label>
         <input type="number" id="rate" value="" step="1" min="0" placeholder="leave blank if not known">
-        <div class="hint">A very large number, or blank, means it appeared to hold still. Orbital motion has both a ceiling and a floor at any given altitude, so this tests in both directions.</div>
+        <div class="hint">A very large number, or blank, means it appeared to hold still. Satellite motion has both a ceiling and a floor at any given altitude, so this tests in both directions.</div>
       </div>
 
       <div class="field">
@@ -279,7 +279,7 @@ footer a{color:var(--dim)}
       </div>
 
       <div class="btnrow">
-        <button class="primary" id="run">Run screen</button>
+        <button class="primary" id="run">Run UFO</button>
         <button id="example">Load example case</button>
       </div>
     </section>
@@ -296,7 +296,7 @@ footer a{color:var(--dim)}
   <br><br>
   The shadow ceiling has two branches. Above the Sun&rsquo;s depression angle the line of sight leaves the shadow on the near side; below it, the sightline crosses the shadow axis and exits the far side at a much greater distance, never closer than R&middot;(csc&thinsp;&beta;/2 &minus; 1). Directions below the depression angle are therefore demanding, not impossible &mdash; the tool solves both branches and reports which one applies.<br><br>Model: geometric cylindrical shadow, Earth radius 6371&nbsp;km, opaque atmosphere allowance 80&nbsp;km, solar position by the NOAA algorithm (no refraction correction, so &beta; is accurate to about half a degree within the first few minutes after sunset and better thereafter). Brightness figures are order-of-magnitude estimates and depend on object size, shape, coating, and phase angle &mdash; treat them as guidance, not measurement.
   <br><br>
-  Verify every surviving hypothesis against real orbital elements: <a href="https://heavens-above.com">heavens-above.com</a>, <a href="https://celestrak.org">celestrak.org</a>, <a href="https://www.n2yo.com">n2yo.com</a>. Use elements dated within a few days of the sighting.
+  Verify every surviving hypothesis against real Satellite elements: <a href="https://heavens-above.com">heavens-above.com</a>, <a href="https://celestrak.org">celestrak.org</a>, <a href="https://www.n2yo.com">n2yo.com</a>. Use elements dated within a few days of the sighting.
 </footer>
 
 </div>
@@ -463,14 +463,14 @@ function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;
    SIGNATURE FIGURE — Earth-shadow cross-section, log radial scale
    ============================================================ */
 const H_MAX = 42000;                        // top of the drawn shell, km
-const RIN = 88, ROUT = 292;                 // screen radii
+const RIN = 88, ROUT = 292;                 // UFO radii
 const CX = 356, CY = 336;
 const LOGD = Math.log10(1 + H_MAX/100);
 function rScreen(h){
   const hh = Math.max(0, Math.min(h, H_MAX));
   return RIN + (ROUT-RIN)*Math.log10(1 + hh/100)/LOGD;
 }
-function mapPt(x, y){                       // real-space km -> screen px
+function mapPt(x, y){                       // real-space km -> UFO px
   const r = Math.hypot(x,y);
   const rs = rScreen(r - R);
   const k = r < 1e-9 ? 0 : rs/r;
@@ -673,7 +673,7 @@ function run(){
 
   if (sun.alt > -0.2){
     out.innerHTML = `<div class="verdict na"><div class="tag">Result</div>
-      <h2>The Sun was still up &mdash; the screen does not apply</h2>
+      <h2>The Sun was still up &mdash; the UFO does not apply</h2>
       <p>Solar elevation was ${f1(sun.alt)}&deg; above the horizon at the time entered. Earth's shadow had not yet reached the observer, so everything in orbit was sunlit and the sky was far too bright for any of it to be seen. Check the time, the UTC offset, and the sign of the longitude.</p></div>`;
     return;
   }
@@ -703,10 +703,10 @@ function run(){
     cls='unlikely'; head='Unlikely &mdash; above the low-Earth-orbit ceiling';
     body=`Sunlight reached this direction only above about ${Math.round(h).toLocaleString()} km, which is above the LEO ceiling of 2 000 km where almost all trackable hardware lives. Navigation constellations sit near 20 200 km. Possible in principle, but the population is thin and faint. Treat a bright, fast-moving object as inconsistent.`;
   } else if (h > 200){
-    cls='possible'; head='Orbiting object possible &mdash; verify against real orbital elements';
-    body=`Anything above about ${Math.round(h)} km along this line of sight was in sunlight. That includes a large part of the low-Earth-orbit population. The geometry permits a satellite or debris flare; it does not confirm one. Run a pass prediction for this site and time before drawing any conclusion.`;
+    cls='possible'; head='Orbiting object possible &mdash; verify against real Satellite elements';
+    body=`Anything above about ${Math.round(h)} km along this line of sight was in sunlight. That includes a large share of the low Earth orbit population. The geometry permits a satellite or debris flare; it does not confirm one. Run a pass prediction for this site and time before drawing any conclusion.`;
   } else {
-    cls='possible'; head='Orbiting object possible &mdash; the whole orbital population was lit';
+    cls='possible'; head='Orbiting object possible &mdash; the whole Satellite population was lit';
     body='Twilight is shallow enough that essentially every satellite and debris object above the observer was still catching sunlight. The geometry rules nothing out at all, so it carries no evidential weight here. Everything now rests on the pass prediction, the motion, and the brightness.';
   }
 
@@ -721,9 +721,9 @@ function run(){
     add('Low in the shadow half of the sky',
       `The object was below the Sun&rsquo;s depression angle and ${f1(offAnti)}&deg; from the anti-solar point. The shadow line is high here, which is why the altitude requirement above is so demanding &mdash; but the direction is far enough off the shadow axis that the requirement is finite rather than absolute.`);
   }
-  if ($('c-strobe').checked) add('Strobing or coloured lights','Satellites and debris do not carry lights. Blinking or colour points to aircraft. Pull ADS-B history for the window.');
-  if ($('c-sound').checked) add('Sound reported','Nothing in orbit is audible from the ground. If the sound came from the object, it was in the atmosphere.');
-  if ($('c-manoeuvre').checked) add('Stopped, hovered, turned, or reversed','Orbital motion is a smooth great-circle arc at constant angular rate. Any of these behaviours rules out an orbiting object regardless of illumination.');
+  if ($('c-strobe').checked) add('Strobing or coloured lights',' Satellites and debris do not carry lights. Blinking or color points to aircraft. Pull ADS-B history for the window.');
+  if ($('c-sound').checked) add('Sound reported',' Nothing in orbit is audible from the ground. If the sound came from the object, it was in the atmosphere.');
+  if ($('c-manoeuvre').checked) add('Stopped, hovered, turned, or reversed',' Satellite motion is a smooth great-circle arc at constant angular rate. Any of these behaviors rules out an orbiting object regardless of Illumination.');
   if ($('c-long').checked) add('Held one position over 15 minutes','A low-Earth-orbit pass lasts two to six minutes end to end. Only geostationary objects hold position, and they are far too faint to notice unaided.');
   if ($('c-return').checked) add('Faded, then returned','A satellite entering Earth&rsquo;s shadow does not come back on the same pass. Reappearance points to a tumbling object with a variable glint, an aircraft turning, or two separate objects.');
   if ($('c-red').checked) add('Reddened before fading','This one supports the satellite hypothesis. Sunlight still reaching an object near the shadow boundary has grazed the atmospheric limb, and scattering through the lower atmosphere strips the short wavelengths much as it reddens a sunset. A slow orange fade over several seconds is the signature of a shadow entry.', true);
@@ -757,10 +757,10 @@ function run(){
     if (isFinite(rateSec) && rateSec > 0){
       const obsRate = 10/rateSec;
       if (obsRate > maxRate*1.25){
-        add('Faster than orbital motion allows',
+        add('Faster than Satellite motion allows',
           `The reported rate of about ${obsRate.toFixed(2)}&deg;/s exceeds the ${fmt(maxRate)}&deg;/s ceiling for a circular orbit at the required altitude, even allowing for the observer&rsquo;s own motion with Earth&rsquo;s rotation. Too slow for a meteor, too fast for orbit &mdash; look at aircraft and other atmospheric candidates.`);
       } else if (obsRate < minRate/1.25){
-        add('Slower than orbital motion allows',
+        add('Slower than Satellite motion allows',
           `An object at ${Math.round(h).toLocaleString()} km seen at ${f1(elev)}&deg; elevation cannot appear to move more slowly than about ${fmt(minRate)}&deg;/s &mdash; roughly ${(10/minRate).toFixed(0)} seconds to cross a fist-width. That floor holds because a circular orbit&rsquo;s velocity is perpendicular to its radius, so only part of it can point along your line of sight. The reported ${obsRate.toFixed(3)}&deg;/s is below it. Consider aircraft on a radial approach, a bright star or planet, or a balloon.`);
       }
     }
@@ -799,7 +799,7 @@ function run(){
   const ss = sunsetLocal(dparts[0], dparts[1], dparts[2], tz, lat, lon);
   const ssTxt = ss ? ` (sunset approx. ${String(ss.h).padStart(2,'0')}:${String(ss.m).padStart(2,'0')} local)` : '';
   const note =
-`ORBITAL ILLUMINATION SCREEN
+`Satellite OR UFO
 Site: ${lat.toFixed(4)}, ${lon.toFixed(4)}
 Time: ${$('date').value} ${$('time').value} local (UTC${tz>=0?'+':''}${tz})${ssTxt}
 
@@ -819,7 +819,7 @@ Earth-shadow geometry (cylindrical shadow, R = 6371 km, 80 km atmospheric allowa
 FINDING: ${head}.
 
 This screens the satellite and debris hypothesis only. It does not identify the object.
-Verify any surviving hypothesis against orbital elements dated within a few days of the
+Verify any surviving hypothesis against Satellite elements dated within a few days of the
 sighting (heavens-above.com, celestrak.org, n2yo.com).`;
 
   /* ---- render ---- */
@@ -839,7 +839,7 @@ sighting (heavens-above.com, celestrak.org, n2yo.com).`;
       <div class="cell"><div class="k">Shadow exit</div><div class="v" style="font-size:16px">${atm.side==='far'?'far side':atm.side==='near'?'near side':atm.side==='sunward'?'sunward':'&mdash;'}</div></div>
       <div class="cell"><div class="k">Penumbral fade band</div><div class="v">${isFinite(penBand)?Math.round(penBand).toLocaleString()+'<span class="u"> km</span>':'<span class="u">not applicable</span>'}</div></div>
       <div class="cell"><div class="k">Sky limiting mag</div><div class="v">${sky.toFixed(1)}</div></div>
-      <div class="cell"><div class="k">Orbital rate window</div><div class="v" style="font-size:16px">${rateRow}</div></div>
+      <div class="cell"><div class="k">Satellite rate window</div><div class="v" style="font-size:16px">${rateRow}</div></div>
       <div class="cell"><div class="k">Hard-edge Earth, no atmosphere</div><div class="v">${isFinite(geo.alt)?Math.round(geo.alt).toLocaleString():'none'}<span class="u"> km</span></div></div>
     </div>
 
@@ -854,7 +854,7 @@ sighting (heavens-above.com, celestrak.org, n2yo.com).`;
     <section class="panel figure">
       <p class="eyebrow">Shadow ceiling across the sky, on this bearing</p>
       ${ceilingCurve(sun.alt, sun.az, objAz, elev, h)}
-      <figcaption>How high an object had to be to stay in sunlight, at every elevation angle along the reported bearing. The marker is the reported position. Where the curve climbs above the shaded orbital bands, no real hardware could have been lit there.</figcaption>
+      <figcaption>How high an object had to be to stay in sunlight, at every elevation angle along the reported bearing. The marker is the reported position. Where the curve climbs above the shaded Satellite bands, no real hardware could have been lit there.</figcaption>
     </section>
 
     <section class="panel" style="margin-bottom:18px">
