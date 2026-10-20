@@ -61,6 +61,11 @@ header.mast{
   text-transform:uppercase;color:var(--faint);margin-top:8px;
 }
 .mast .ver{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;letter-spacing:.08em}
+.mast-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+nav.tools{display:flex;gap:4px;flex-wrap:wrap}
+nav.tools a{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;color:var(--dim);border:1px solid var(--edge-soft);border-radius:3px;padding:6px 10px}
+nav.tools a:hover{border-color:var(--dim);color:var(--ink)}
+nav.tools a[aria-current="page"]{color:var(--lit);border-color:var(--lit)}
 
 /* ---------- layout ---------- */
 .grid{display:grid;grid-template-columns:352px 1fr;gap:24px;align-items:start}
@@ -189,7 +194,13 @@ footer a{color:var(--dim)}
     <h1>Satellite <span class="amber">OR</span> UFO</h1>
     <div class="sub">Earth-shadow geometry · satellite &amp; debris flare screening</div>
   </div>
-  <div class="ver">Field tool · geometric model<br>Screens one hypothesis only</div>
+  <div class="mast-right">
+    <nav class="tools" aria-label="Tools">
+      <a href="./" aria-current="page">Shadow screen</a>
+      <a href="visibility/">Visibility</a>
+    </nav>
+    <div class="ver">Field tool · geometric model<br>Screens one hypothesis only</div>
+  </div>
 </header>
 
 <div class="grid">
